@@ -28,7 +28,7 @@ async function run(): Promise<void> {
   try {
     await installTool()
 
-    const args = ['affected', '-f', 'text']
+    const args = ['affected', '-f', 'text', 'traversal']
 
     const fromArg = core.getInput('from')
     const toArg = core.getInput('to')
@@ -55,7 +55,7 @@ async function run(): Promise<void> {
     })
 
     if (affectedExitCode === 166) {
-      core.info('No affected projects')
+      // No affected projects. Stdout will log it
       return
     } else if (affectedExitCode > 0) {
       core.error('dotnet affected failed!')

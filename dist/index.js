@@ -62,7 +62,7 @@ function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             yield installTool();
-            const args = ['affected', '-f', 'text'];
+            const args = ['affected', '-f', 'text', 'traversal'];
             const fromArg = core.getInput('from');
             const toArg = core.getInput('to');
             if (fromArg) {
@@ -83,7 +83,7 @@ function run() {
                 failOnStdErr: false,
             });
             if (affectedExitCode === 166) {
-                core.info('No affected projects');
+                // No affected projects. Stdout will log it
                 return;
             }
             else if (affectedExitCode > 0) {
