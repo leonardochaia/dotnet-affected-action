@@ -1,6 +1,9 @@
 name: 'Dotnet Affected'
 description: 'Runs dotnet-affected'
 author: 'Leonardo Chaia (me@leonardochaia.com)'
+branding:
+  icon: 'layers'  
+  color: 'green'
 inputs:
   toolVersion:
     description: 'dotnet-affected version to install'
