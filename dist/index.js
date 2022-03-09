@@ -59,18 +59,20 @@ function run() {
             core.addPath(path.join(os.homedir(), '.dotnet', 'tools'));
             // Collect a JSON string of all the version properties.
             const args = ['affected', '-f', 'text'];
-            // if (Inputs.path) {
-            //   args.push('-p', Inputs.path)
-            // }
-            core.info('Running dotnet affected');
+            const fromArg = core.getInput('from');
+            const toArg = core.getInput('to');
+            if (fromArg) {
+                args.push('--from', fromArg);
+            }
+            if (toArg) {
+                args.push('--to', toArg);
+            }
+            core.info(`Running dotnet affected ${args.join('')}`);
             let affectedStdOut = '';
             yield (0, exec_1.exec)('dotnet', args, {
                 listeners: {
                     stdout: (data) => {
                         affectedStdOut += data.toString();
-                    },
-                    stderr: (data) => {
-                        console.error(data.toString());
                     },
                 },
             });
@@ -81,53 +83,8 @@ function run() {
             }
             const affectedTxt = yield fs_1.promises.readFile(path.join(affectedTxtPath, 'affected.txt'), 'utf-8');
             core.setOutput('affected', affectedTxt);
-            // // Break up the JSON into individual outputs.
-            // const versionProperties = JSON.parse(affectedStdOut)
-            // for (const name in versionProperties.CloudBuildAllVars) {
-            //   // Trim off the leading NBGV_
-            //   core.setOutput(
-            //     name.substring(5),
-            //     versionProperties.CloudBuildAllVars[name]
-            //   )
-            // }
-            // // Set environment variables if desired.
-            // if (Inputs.setCommonVars || Inputs.setAllVars) {
-            //   args = ['cloud']
-            //   if (Inputs.path) {
-            //     args.push('-p', Inputs.path)
-            //   }
-            //   if (Inputs.setCommonVars) {
-            //     args.push('-c')
-            //   }
-            //   if (Inputs.setAllVars) {
-            //     args.push('-a')
-            //   }
-            //   await exec('nbgv', args)
-            // }
-            // // Stamp the version on an existing file, if desired.
-            // if (Inputs.stamp) {
-            //   if (path.basename(Inputs.stamp) === 'package.json') {
-            //     await exec(
-            //       'npm',
-            //       [
-            //         'version',
-            //         versionProperties.NpmPackageVersion,
-            //         '--git-tag-version=false',
-            //         '--allow-same-version',
-            //       ],
-            //       { cwd: path.dirname(Inputs.stamp) }
-            //     )
-            //   } else {
-            //     throw new Error(
-            //       `Unable to stamp unsupported file format: ${path.basename(
-            //         Inputs.stamp
-            //       )}`
-            //     )
-            //   }
-            // }
         }
         catch (error) {
-            console.error(error);
             core.setFailed(error.message);
         }
     });

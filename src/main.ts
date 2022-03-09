@@ -62,7 +62,6 @@ async function run(): Promise<void> {
     )
 
     core.setOutput('affected', affectedTxt)
-
   } catch (error: unknown) {
     core.setFailed((error as { message: string }).message)
   }
