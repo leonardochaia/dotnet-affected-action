@@ -83,6 +83,7 @@ function run() {
                         affectedStdErr += data.toString();
                     },
                 },
+                ignoreReturnCode: true,
                 failOnStdErr: false,
             });
             core.info(affectedStdOut);

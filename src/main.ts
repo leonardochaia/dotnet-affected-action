@@ -54,6 +54,7 @@ async function run(): Promise<void> {
           affectedStdErr += data.toString()
         },
       },
+      ignoreReturnCode: true,
       failOnStdErr: false,
     })
 
