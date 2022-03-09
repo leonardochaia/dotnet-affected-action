@@ -67,7 +67,7 @@ function run() {
             if (toArg) {
                 args.push('--to', toArg);
             }
-            core.info(`Running dotnet affected ${args.join('')}`);
+            core.info(`Running dotnet affected`);
             let affectedStdOut = '';
             yield (0, exec_1.exec)('dotnet', args, {
                 listeners: {

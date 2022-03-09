@@ -38,7 +38,7 @@ async function run(): Promise<void> {
       args.push('--to', toArg)
     }
 
-    core.info(`Running dotnet affected ${args.join('')}`)
+    core.info(`Running dotnet affected`)
 
     let affectedStdOut = ''
     await exec('dotnet', args, {

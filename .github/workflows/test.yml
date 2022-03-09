@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       
       - uses: nrwl/last-successful-commit-action@v1
         id: last_successful_commit
@@ -30,4 +32,4 @@ jobs:
       - uses: ./
         with:
           from: ${{ steps.last_successful_commit.outputs.commit_hash }}
-          to: ${{ env.GITHUB_SHA }}
+          to: ${{ github.sha }}
