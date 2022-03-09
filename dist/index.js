@@ -40,24 +40,28 @@ const os = __importStar(__nccwpck_require__(87));
 const path = __importStar(__nccwpck_require__(622));
 const exec_1 = __nccwpck_require__(514);
 const fs_1 = __nccwpck_require__(747);
+function installTool() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const installArgs = ['tool', 'install', '-g', 'dotnet-affected'];
+        const toolVersion = core.getInput('toolVersion');
+        if (toolVersion) {
+            installArgs.push('--version', toolVersion);
+        }
+        const exitCode = yield (0, exec_1.exec)('dotnet', installArgs, {
+            ignoreReturnCode: true,
+        });
+        if (exitCode > 1) {
+            throw new Error('Failed to install dotnet affected tool');
+        }
+        // add .dotnet/tools to the path
+        core.addPath(path.join(os.homedir(), '.dotnet', 'tools'));
+        return exitCode;
+    });
+}
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            // install dotnet-affected
-            const installArgs = ['tool', 'install', '-g', 'dotnet-affected'];
-            const toolVersion = core.getInput('toolVersion');
-            if (toolVersion) {
-                installArgs.push('--version', toolVersion);
-            }
-            const exitCode = yield (0, exec_1.exec)('dotnet', installArgs, {
-                ignoreReturnCode: true,
-            });
-            if (exitCode > 1) {
-                throw new Error('Failed to install dotnet affected tool');
-            }
-            // add .dotnet/tools to the path
-            core.addPath(path.join(os.homedir(), '.dotnet', 'tools'));
-            // Collect a JSON string of all the version properties.
+            yield installTool();
             const args = ['affected', '-f', 'text'];
             const fromArg = core.getInput('from');
             const toArg = core.getInput('to');
@@ -69,14 +73,26 @@ function run() {
             }
             core.info(`Running dotnet affected`);
             let affectedStdOut = '';
-            yield (0, exec_1.exec)('dotnet', args, {
+            let affectedStdErr = '';
+            const affectedExitCode = yield (0, exec_1.exec)('dotnet', args, {
                 listeners: {
                     stdout: (data) => {
                         affectedStdOut += data.toString();
                     },
+                    stderr: (data) => {
+                        affectedStdErr += data.toString();
+                    },
                 },
+                failOnStdErr: false,
             });
             core.info(affectedStdOut);
+            if (affectedExitCode === 166) {
+                core.info('No affected projects');
+            }
+            else {
+                core.error('dotnet affected failed!');
+                core.error(affectedStdErr);
+            }
             const affectedTxtPath = process.env.GITHUB_WORKSPACE;
             if (!affectedTxtPath) {
                 throw new Error('No GITHUB_WORKSPACE env?');

@@ -4,27 +4,30 @@ import * as path from 'path'
 import { exec } from '@actions/exec'
 import { promises as fs } from 'fs'
 
+async function installTool(): Promise<number> {
+  const installArgs = ['tool', 'install', '-g', 'dotnet-affected']
+  const toolVersion = core.getInput('toolVersion')
+  if (toolVersion) {
+    installArgs.push('--version', toolVersion)
+  }
+
+  const exitCode = await exec('dotnet', installArgs, {
+    ignoreReturnCode: true,
+  })
+
+  if (exitCode > 1) {
+    throw new Error('Failed to install dotnet affected tool')
+  }
+
+  // add .dotnet/tools to the path
+  core.addPath(path.join(os.homedir(), '.dotnet', 'tools'))
+  return exitCode
+}
+
 async function run(): Promise<void> {
   try {
-    // install dotnet-affected
-    const installArgs = ['tool', 'install', '-g', 'dotnet-affected']
-    const toolVersion = core.getInput('toolVersion')
-    if (toolVersion) {
-      installArgs.push('--version', toolVersion)
-    }
+    await installTool()
 
-    const exitCode = await exec('dotnet', installArgs, {
-      ignoreReturnCode: true,
-    })
-
-    if (exitCode > 1) {
-      throw new Error('Failed to install dotnet affected tool')
-    }
-
-    // add .dotnet/tools to the path
-    core.addPath(path.join(os.homedir(), '.dotnet', 'tools'))
-
-    // Collect a JSON string of all the version properties.
     const args = ['affected', '-f', 'text']
 
     const fromArg = core.getInput('from')
@@ -41,15 +44,27 @@ async function run(): Promise<void> {
     core.info(`Running dotnet affected`)
 
     let affectedStdOut = ''
-    await exec('dotnet', args, {
+    let affectedStdErr = ''
+    const affectedExitCode = await exec('dotnet', args, {
       listeners: {
         stdout: (data: Buffer) => {
           affectedStdOut += data.toString()
         },
+        stderr: (data: Buffer) => {
+          affectedStdErr += data.toString()
+        },
       },
+      failOnStdErr: false,
     })
 
     core.info(affectedStdOut)
+
+    if (affectedExitCode === 166) {
+      core.info('No affected projects')
+    } else {
+      core.error('dotnet affected failed!')
+      core.error(affectedStdErr)
+    }
 
     const affectedTxtPath = process.env.GITHUB_WORKSPACE
     if (!affectedTxtPath) {

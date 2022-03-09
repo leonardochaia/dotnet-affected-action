@@ -8,6 +8,9 @@ inputs:
     description: 'Commit/branch/revision for git diff'
   to:
     description: 'Commit/branch/revision for git diff'
+outputs:
+  affected:
+    description: The list of changed and affected projects, if any
 runs:
   using: 'node16'
   main: 'dist/index.js'
