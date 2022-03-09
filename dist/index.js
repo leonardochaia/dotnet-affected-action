@@ -84,6 +84,7 @@ function run() {
             });
             if (affectedExitCode === 166) {
                 core.info('No affected projects');
+                return;
             }
             else if (affectedExitCode > 0) {
                 core.error('dotnet affected failed!');

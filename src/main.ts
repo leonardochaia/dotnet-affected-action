@@ -56,6 +56,7 @@ async function run(): Promise<void> {
 
     if (affectedExitCode === 166) {
       core.info('No affected projects')
+      return
     } else if (affectedExitCode > 0) {
       core.error('dotnet affected failed!')
       core.error(affectedStdErr)
