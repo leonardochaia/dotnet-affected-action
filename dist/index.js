@@ -72,13 +72,9 @@ function run() {
                 args.push('--to', toArg);
             }
             core.info(`Running dotnet affected`);
-            let affectedStdOut = '';
             let affectedStdErr = '';
             const affectedExitCode = yield (0, exec_1.exec)('dotnet', args, {
                 listeners: {
-                    stdout: (data) => {
-                        affectedStdOut += data.toString();
-                    },
                     stderr: (data) => {
                         affectedStdErr += data.toString();
                     },
@@ -86,13 +82,13 @@ function run() {
                 ignoreReturnCode: true,
                 failOnStdErr: false,
             });
-            core.info(affectedStdOut);
             if (affectedExitCode === 166) {
                 core.info('No affected projects');
             }
-            else {
+            else if (affectedExitCode > 0) {
                 core.error('dotnet affected failed!');
                 core.error(affectedStdErr);
+                return;
             }
             const affectedTxtPath = process.env.GITHUB_WORKSPACE;
             if (!affectedTxtPath) {

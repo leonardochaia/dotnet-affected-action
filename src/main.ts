@@ -43,13 +43,9 @@ async function run(): Promise<void> {
 
     core.info(`Running dotnet affected`)
 
-    let affectedStdOut = ''
     let affectedStdErr = ''
     const affectedExitCode = await exec('dotnet', args, {
       listeners: {
-        stdout: (data: Buffer) => {
-          affectedStdOut += data.toString()
-        },
         stderr: (data: Buffer) => {
           affectedStdErr += data.toString()
         },
@@ -58,13 +54,12 @@ async function run(): Promise<void> {
       failOnStdErr: false,
     })
 
-    core.info(affectedStdOut)
-
     if (affectedExitCode === 166) {
       core.info('No affected projects')
-    } else {
+    } else if (affectedExitCode > 0) {
       core.error('dotnet affected failed!')
       core.error(affectedStdErr)
+      return
     }
 
     const affectedTxtPath = process.env.GITHUB_WORKSPACE
