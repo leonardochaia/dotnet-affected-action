@@ -1,11 +1,10 @@
-name: 'Your name here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: 'Dotnet Affected'
+description: 'Runs dotnet-affected'
+author: 'Leonardo Chaia (me@leonardochaia.com)'
 inputs:
-  milliseconds: # change this
-    required: true
-    description: 'input description here'
-    default: 'default value if applicable'
+  toolVersion: # change this
+    required: false
+    description: 'dotnet-affected version to install'
 runs:
   using: 'node16'
   main: 'dist/index.js'
