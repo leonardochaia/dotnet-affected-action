@@ -19,6 +19,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      
+      - uses: nrwl/last-successful-commit-action@v1
+        id: last_successful_commit
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ env.GITHUB_REF_NAME }}
+          workflow_id: 'test.yml'
+
       - uses: ./
         with:
-          milliseconds: 1000
+          from: ${{ steps.last_successful_commit.outputs.commit_hash }}
+          to: ${{ env.GITHUB_SHA }}

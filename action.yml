@@ -2,9 +2,12 @@ name: 'Dotnet Affected'
 description: 'Runs dotnet-affected'
 author: 'Leonardo Chaia (me@leonardochaia.com)'
 inputs:
-  toolVersion: # change this
-    required: false
+  toolVersion:
     description: 'dotnet-affected version to install'
+  from:
+    description: 'Commit/branch/revision for git diff'
+  to:
+    description: 'Commit/branch/revision for git diff'
 runs:
   using: 'node16'
   main: 'dist/index.js'

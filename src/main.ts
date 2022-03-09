@@ -27,19 +27,24 @@ async function run(): Promise<void> {
     // Collect a JSON string of all the version properties.
     const args = ['affected', '-f', 'text']
 
-    // if (Inputs.path) {
-    //   args.push('-p', Inputs.path)
-    // }
+    const fromArg = core.getInput('from')
+    const toArg = core.getInput('to')
 
-    core.info('Running dotnet affected')
+    if (fromArg) {
+      args.push('--from', fromArg)
+    }
+
+    if (toArg) {
+      args.push('--to', toArg)
+    }
+
+    core.info(`Running dotnet affected ${args.join('')}`)
+
     let affectedStdOut = ''
     await exec('dotnet', args, {
       listeners: {
         stdout: (data: Buffer) => {
           affectedStdOut += data.toString()
-        },
-        stderr: (data: Buffer) => {
-          console.error(data.toString())
         },
       },
     })
@@ -58,55 +63,7 @@ async function run(): Promise<void> {
 
     core.setOutput('affected', affectedTxt)
 
-    // // Break up the JSON into individual outputs.
-    // const versionProperties = JSON.parse(affectedStdOut)
-    // for (const name in versionProperties.CloudBuildAllVars) {
-    //   // Trim off the leading NBGV_
-    //   core.setOutput(
-    //     name.substring(5),
-    //     versionProperties.CloudBuildAllVars[name]
-    //   )
-    // }
-
-    // // Set environment variables if desired.
-    // if (Inputs.setCommonVars || Inputs.setAllVars) {
-    //   args = ['cloud']
-    //   if (Inputs.path) {
-    //     args.push('-p', Inputs.path)
-    //   }
-    //   if (Inputs.setCommonVars) {
-    //     args.push('-c')
-    //   }
-    //   if (Inputs.setAllVars) {
-    //     args.push('-a')
-    //   }
-
-    //   await exec('nbgv', args)
-    // }
-
-    // // Stamp the version on an existing file, if desired.
-    // if (Inputs.stamp) {
-    //   if (path.basename(Inputs.stamp) === 'package.json') {
-    //     await exec(
-    //       'npm',
-    //       [
-    //         'version',
-    //         versionProperties.NpmPackageVersion,
-    //         '--git-tag-version=false',
-    //         '--allow-same-version',
-    //       ],
-    //       { cwd: path.dirname(Inputs.stamp) }
-    //     )
-    //   } else {
-    //     throw new Error(
-    //       `Unable to stamp unsupported file format: ${path.basename(
-    //         Inputs.stamp
-    //       )}`
-    //     )
-    //   }
-    // }
   } catch (error: unknown) {
-    console.error(error);
     core.setFailed((error as { message: string }).message)
   }
 }
