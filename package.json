@@ -30,7 +30,7 @@
     "os": "^0.1.2"
   },
   "devDependencies": {
-    "@types/node": "^18.0.6",
+    "@types/node": "^18.11.13",
     "@typescript-eslint/parser": "^5.32.0",
     "@vercel/ncc": "^0.33.3",
     "eslint": "^8.20.0",
