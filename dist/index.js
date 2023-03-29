@@ -69,11 +69,15 @@ function run() {
             const args = ['affected', '-f', 'text', 'traversal'];
             const fromArg = core.getInput('from');
             const toArg = core.getInput('to');
+            const solutionPathArg = core.getInput('solution-path');
             if (fromArg) {
                 args.push('--from', fromArg);
             }
             if (toArg) {
                 args.push('--to', toArg);
+            }
+            if (solutionPathArg) {
+                args.push('--solution-path', solutionPathArg);
             }
             core.info(`Running dotnet affected`);
             let affectedStdErr = '';
