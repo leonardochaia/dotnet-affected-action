@@ -63,8 +63,8 @@ async function run(): Promise<void> {
       // No affected projects. Stdout will log it
       return
     } else if (affectedExitCode > 0) {
-      core.error('dotnet affected failed!')
       core.error(affectedStdErr)
+      core.setFailed('dotnet affected failed!')
       return
     }
 
