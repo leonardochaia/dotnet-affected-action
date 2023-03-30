@@ -95,8 +95,8 @@ function run() {
                 return;
             }
             else if (affectedExitCode > 0) {
-                core.error('dotnet affected failed!');
                 core.error(affectedStdErr);
+                core.setFailed('dotnet affected failed!');
                 return;
             }
             const affectedTxtPath = process.env.GITHUB_WORKSPACE;
