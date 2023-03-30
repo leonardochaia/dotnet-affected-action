@@ -44,7 +44,7 @@ jobs:
           branch: ${{ env.GITHUB_REF_NAME }}
           workflow_id: 'test.yml'
 
-      - uses: leonardochaia/dotnet-affected@v1
+      - uses: leonardochaia/dotnet-affected-action@v1
         id: dotnet_affected
         with:
           from: ${{ steps.last_successful_commit.outputs.commit_hash }}
@@ -85,7 +85,7 @@ jobs:
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
 
-      - uses: leonardochaia/dotnet-affected@v1
+      - uses: leonardochaia/dotnet-affected-action@v1
         id: dotnet_affected
         with:
           from: ${{ github.head_ref }}
