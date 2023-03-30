@@ -51,13 +51,13 @@ jobs:
           to: ${{ github.sha }}
 
       - name: Install dependencies
-        if: success() && steps.affected.outputs.affected != ''
+        if: success() && steps.dotnet_affected.outputs.affected != ''
         run: dotnet restore affected.proj
       - name: Build
-        if: success() && steps.affected.outputs.affected != ''
+        if: success() && steps.dotnet_affected.outputs.affected != ''
         run: dotnet build --configuration Release --no-restore affected.proj
       - name: Test
-        if: success() && steps.affected.outputs.affected != ''
+        if: success() && steps.dotnet_affected.outputs.affected != ''
         run: dotnet test --no-restore --verbosity normal affected.proj
 ```
 
@@ -92,12 +92,12 @@ jobs:
           to: ${{ github.base_ref }}
 
       - name: Install dependencies
-        if: success() && steps.affected.outputs.affected != ''
+        if: success() && steps.dotnet_affected.outputs.affected != ''
         run: dotnet restore affected.proj
       - name: Build
-        if: success() && steps.affected.outputs.affected != ''
+        if: success() && steps.dotnet_affected.outputs.affected != ''
         run: dotnet build --configuration Release --no-restore affected.proj
       - name: Test
-        if: success() && steps.affected.outputs.affected != ''
+        if: success() && steps.dotnet_affected.outputs.affected != ''
         run: dotnet test --no-restore --verbosity normal affected.proj
 ```
