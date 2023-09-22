@@ -44,6 +44,7 @@ async function run(): Promise<void> {
 
     if (solutionPathArg) {
       args.push('--solution-path', solutionPathArg)
+      args.push('--repository-path', process.env.GITHUB_WORKSPACE)
     }
 
     core.info(`Running dotnet affected`)
