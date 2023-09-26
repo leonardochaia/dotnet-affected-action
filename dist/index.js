@@ -76,8 +76,13 @@ function run() {
             if (toArg) {
                 args.push('--to', toArg);
             }
+            const affectedTxtPath = process.env.GITHUB_WORKSPACE;
+            if (!affectedTxtPath) {
+                throw new Error('No GITHUB_WORKSPACE env?');
+            }
             if (solutionPathArg) {
                 args.push('--solution-path', solutionPathArg);
+                args.push('--repository-path', affectedTxtPath);
             }
             core.info(`Running dotnet affected`);
             let affectedStdErr = '';
@@ -98,10 +103,6 @@ function run() {
                 core.error(affectedStdErr);
                 core.setFailed('dotnet affected failed!');
                 return;
-            }
-            const affectedTxtPath = process.env.GITHUB_WORKSPACE;
-            if (!affectedTxtPath) {
-                throw new Error('No GITHUB_WORKSPACE env?');
             }
             const affectedTxt = yield fs_1.promises.readFile(path.join(affectedTxtPath, 'affected.txt'), 'utf-8');
             core.setOutput('affected', affectedTxt);
