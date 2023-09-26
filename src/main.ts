@@ -42,9 +42,14 @@ async function run(): Promise<void> {
       args.push('--to', toArg)
     }
 
+    const affectedTxtPath = process.env.GITHUB_WORKSPACE
+    if (!affectedTxtPath) {
+      throw new Error('No GITHUB_WORKSPACE env?')
+    }
+
     if (solutionPathArg) {
       args.push('--solution-path', solutionPathArg)
-      args.push('--repository-path', process.env.GITHUB_WORKSPACE)
+      args.push('--repository-path', affectedTxtPath)
     }
 
     core.info(`Running dotnet affected`)
@@ -67,11 +72,6 @@ async function run(): Promise<void> {
       core.error(affectedStdErr)
       core.setFailed('dotnet affected failed!')
       return
-    }
-
-    const affectedTxtPath = process.env.GITHUB_WORKSPACE
-    if (!affectedTxtPath) {
-      throw new Error('No GITHUB_WORKSPACE env?')
     }
 
     const affectedTxt = await fs.readFile(
