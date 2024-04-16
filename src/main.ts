@@ -33,6 +33,7 @@ async function run(): Promise<void> {
     const fromArg = core.getInput('from')
     const toArg = core.getInput('to')
     const solutionPathArg = core.getInput('solution-path')
+    const excludeArg = core.getInput('exclude')
 
     if (fromArg) {
       args.push('--from', fromArg)
@@ -50,6 +51,10 @@ async function run(): Promise<void> {
     if (solutionPathArg) {
       args.push('--solution-path', solutionPathArg)
       args.push('--repository-path', affectedTxtPath)
+    }
+
+    if (excludeArg) {
+      args.push('--exclude', excludeArg)
     }
 
     core.info(`Running dotnet affected`)
