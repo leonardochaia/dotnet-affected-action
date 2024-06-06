@@ -11,6 +11,8 @@ inputs:
     description: 'Commit/branch/revision for git diff'
   to:
     description: 'Commit/branch/revision for git diff'
+  exclude:
+    description: 'Valid .Net Regex pattern to ignore from build'
   solution-path:
     description: 'Path to a Solution file (.sln) used to discover projects that may be affected.'
 outputs:
