@@ -37,18 +37,14 @@ jobs:
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
 
-      - uses: nrwl/last-successful-commit-action@v1
-        id: last_successful_commit
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ env.GITHUB_REF_NAME }}
-          workflow_id: 'test.yml'
+      - uses: nrwl/nx-set-shas@v4
+        id: set_shas
 
-      - uses: leonardochaia/dotnet-affected-action@v1
+      - uses: ./
         id: dotnet_affected
         with:
-          from: ${{ steps.last_successful_commit.outputs.commit_hash }}
-          to: ${{ github.sha }}
+          from: ${{ steps.set_shas.outputs.base }}
+          to: ${{ steps.set_shas.outputs.head }}
 
       - name: Install dependencies
         if: success() && steps.dotnet_affected.outputs.affected != ''
