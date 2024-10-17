@@ -92,7 +92,7 @@ async function run(): Promise<void> {
     if (readTextAsOutput) {
       const affectedTxt = await fs.readFile(
         path.join(affectedTxtPath, 'affected.txt'),
-        'utf-8'
+        'utf-8',
       )
       core.setOutput('affected', affectedTxt)
     }
