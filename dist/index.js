@@ -66,11 +66,21 @@ function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             yield installTool();
-            const args = ['affected', '-f', 'text', 'traversal'];
+            const args = ['affected'];
             const fromArg = core.getInput('from');
             const toArg = core.getInput('to');
             const solutionPathArg = core.getInput('solution-path');
             const excludeArg = core.getInput('exclude');
+            const outputFormatArg = core.getInput('output-format');
+            let readTextAsOutput = false;
+            if (outputFormatArg) {
+                args.push('--format', outputFormatArg);
+                readTextAsOutput = outputFormatArg.includes('text');
+            }
+            else {
+                args.push('--format', 'text', 'traversal');
+                readTextAsOutput = true;
+            }
             if (fromArg) {
                 args.push('--from', fromArg);
             }
@@ -108,8 +118,10 @@ function run() {
                 core.setFailed('dotnet affected failed!');
                 return;
             }
-            const affectedTxt = yield fs_1.promises.readFile(path.join(affectedTxtPath, 'affected.txt'), 'utf-8');
-            core.setOutput('affected', affectedTxt);
+            if (readTextAsOutput) {
+                const affectedTxt = yield fs_1.promises.readFile(path.join(affectedTxtPath, 'affected.txt'), 'utf-8');
+                core.setOutput('affected', affectedTxt);
+            }
         }
         catch (error) {
             core.setFailed(error.message);

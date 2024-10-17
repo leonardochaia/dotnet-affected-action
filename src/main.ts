@@ -28,12 +28,22 @@ async function run(): Promise<void> {
   try {
     await installTool()
 
-    const args = ['affected', '-f', 'text', 'traversal']
+    const args = ['affected']
 
     const fromArg = core.getInput('from')
     const toArg = core.getInput('to')
     const solutionPathArg = core.getInput('solution-path')
     const excludeArg = core.getInput('exclude')
+    const outputFormatArg = core.getInput('output-format')
+    let readTextAsOutput = false
+
+    if (outputFormatArg) {
+      args.push('--format', outputFormatArg)
+      readTextAsOutput = outputFormatArg.includes('text')
+    } else {
+      args.push('--format', 'text', 'traversal')
+      readTextAsOutput = true
+    }
 
     if (fromArg) {
       args.push('--from', fromArg)
@@ -79,12 +89,13 @@ async function run(): Promise<void> {
       return
     }
 
-    const affectedTxt = await fs.readFile(
-      path.join(affectedTxtPath, 'affected.txt'),
-      'utf-8'
-    )
-
-    core.setOutput('affected', affectedTxt)
+    if (readTextAsOutput) {
+      const affectedTxt = await fs.readFile(
+        path.join(affectedTxtPath, 'affected.txt'),
+        'utf-8'
+      )
+      core.setOutput('affected', affectedTxt)
+    }
   } catch (error: unknown) {
     core.setFailed((error as { message: string }).message)
   }

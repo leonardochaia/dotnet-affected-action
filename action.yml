@@ -15,6 +15,8 @@ inputs:
     description: 'Valid .Net Regex pattern to ignore from build'
   solution-path:
     description: 'Path to a Solution file (.sln) used to discover projects that may be affected.'
+  output-format:
+    description: 'Space separated list of formats to use. (i.e text traversal)'
 outputs:
   affected:
     description: The list of changed and affected projects, if any
