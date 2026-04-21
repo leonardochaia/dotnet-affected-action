@@ -22,111 +22,108 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(484));
 const os = __importStar(__nccwpck_require__(857));
 const path = __importStar(__nccwpck_require__(928));
 const exec_1 = __nccwpck_require__(236);
 const fs_1 = __nccwpck_require__(896);
-function installTool() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const installArgs = ['tool', 'install', '-g', 'dotnet-affected'];
-        const toolVersion = core.getInput('toolVersion');
-        if (toolVersion) {
-            installArgs.push('--version', toolVersion);
-        }
-        const exitCode = yield (0, exec_1.exec)('dotnet', installArgs, {
-            ignoreReturnCode: true,
-        });
-        if (exitCode > 1) {
-            throw new Error('Failed to install dotnet affected tool');
-        }
-        // add .dotnet/tools to the path
-        core.addPath(path.join(os.homedir(), '.dotnet', 'tools'));
-        return exitCode;
+async function installTool() {
+    const installArgs = ['tool', 'install', '-g', 'dotnet-affected'];
+    const toolVersion = core.getInput('toolVersion');
+    if (toolVersion) {
+        installArgs.push('--version', toolVersion);
+    }
+    const exitCode = await (0, exec_1.exec)('dotnet', installArgs, {
+        ignoreReturnCode: true,
     });
+    if (exitCode > 1) {
+        throw new Error('Failed to install dotnet affected tool');
+    }
+    // add .dotnet/tools to the path
+    core.addPath(path.join(os.homedir(), '.dotnet', 'tools'));
+    return exitCode;
 }
-function run() {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            yield installTool();
-            const args = ['affected'];
-            const fromArg = core.getInput('from');
-            const toArg = core.getInput('to');
-            const solutionPathArg = core.getInput('solution-path');
-            const excludeArg = core.getInput('exclude');
-            const outputFormatArg = core.getInput('output-format');
-            let readTextAsOutput = false;
-            if (outputFormatArg) {
-                args.push('--format', outputFormatArg);
-                readTextAsOutput = outputFormatArg.includes('text');
-            }
-            else {
-                args.push('--format', 'text', 'traversal');
-                readTextAsOutput = true;
-            }
-            if (fromArg) {
-                args.push('--from', fromArg);
-            }
-            if (toArg) {
-                args.push('--to', toArg);
-            }
-            const affectedTxtPath = process.env.GITHUB_WORKSPACE;
-            if (!affectedTxtPath) {
-                throw new Error('No GITHUB_WORKSPACE env?');
-            }
-            if (solutionPathArg) {
-                args.push('--solution-path', solutionPathArg);
-                args.push('--repository-path', affectedTxtPath);
-            }
-            if (excludeArg) {
-                args.push('--exclude', excludeArg);
-            }
-            core.info(`Running dotnet affected`);
-            let affectedStdErr = '';
-            const affectedExitCode = yield (0, exec_1.exec)('dotnet', args, {
-                listeners: {
-                    stderr: (data) => {
-                        affectedStdErr += data.toString();
-                    },
+async function run() {
+    try {
+        await installTool();
+        const args = ['affected'];
+        const fromArg = core.getInput('from');
+        const toArg = core.getInput('to');
+        const solutionPathArg = core.getInput('solution-path');
+        const excludeArg = core.getInput('exclude');
+        const outputFormatArg = core.getInput('output-format');
+        let readTextAsOutput = false;
+        if (outputFormatArg) {
+            args.push('--format', outputFormatArg);
+            readTextAsOutput = outputFormatArg.includes('text');
+        }
+        else {
+            args.push('--format', 'text', 'traversal');
+            readTextAsOutput = true;
+        }
+        if (fromArg) {
+            args.push('--from', fromArg);
+        }
+        if (toArg) {
+            args.push('--to', toArg);
+        }
+        const affectedTxtPath = process.env.GITHUB_WORKSPACE;
+        if (!affectedTxtPath) {
+            throw new Error('No GITHUB_WORKSPACE env?');
+        }
+        if (solutionPathArg) {
+            args.push('--solution-path', solutionPathArg);
+            args.push('--repository-path', affectedTxtPath);
+        }
+        if (excludeArg) {
+            args.push('--exclude', excludeArg);
+        }
+        core.info(`Running dotnet affected`);
+        let affectedStdErr = '';
+        const affectedExitCode = await (0, exec_1.exec)('dotnet', args, {
+            listeners: {
+                stderr: (data) => {
+                    affectedStdErr += data.toString();
                 },
-                ignoreReturnCode: true,
-                failOnStdErr: false,
-            });
-            if (affectedExitCode === 166) {
-                // No affected projects. Stdout will log it
-                return;
-            }
-            else if (affectedExitCode > 0) {
-                core.error(affectedStdErr);
-                core.setFailed('dotnet affected failed!');
-                return;
-            }
-            if (readTextAsOutput) {
-                const affectedTxt = yield fs_1.promises.readFile(path.join(affectedTxtPath, 'affected.txt'), 'utf-8');
-                core.setOutput('affected', affectedTxt);
-            }
+            },
+            ignoreReturnCode: true,
+            failOnStdErr: false,
+        });
+        if (affectedExitCode === 166) {
+            // No affected projects. Stdout will log it
+            return;
         }
-        catch (error) {
-            core.setFailed(error.message);
+        else if (affectedExitCode > 0) {
+            core.error(affectedStdErr);
+            core.setFailed('dotnet affected failed!');
+            return;
         }
-    });
+        if (readTextAsOutput) {
+            const affectedTxt = await fs_1.promises.readFile(path.join(affectedTxtPath, 'affected.txt'), 'utf-8');
+            core.setOutput('affected', affectedTxt);
+        }
+    }
+    catch (error) {
+        core.setFailed(error.message);
+    }
 }
 run();
 
