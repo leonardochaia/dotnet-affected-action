@@ -141,10 +141,17 @@ const exec_1 = __nccwpck_require__(236);
 const fs_1 = __nccwpck_require__(896);
 const version_1 = __nccwpck_require__(992);
 const args_1 = __nccwpck_require__(183);
-function installTool() {
+/**
+ * Installs the tool, and returns what `dotnet tool install` exited with.
+ *
+ * An exit code of 1 is not treated as a failure here: it is what an install reports
+ * when the tool is already there, which is the normal state of a runner with a warm
+ * tool cache. It is also what a version range matching nothing on the feed reports,
+ * so the install alone cannot tell the two apart — {@link assertToolIsUsable} does.
+ */
+function installTool(toolVersion) {
     return __awaiter(this, void 0, void 0, function* () {
         const installArgs = ['tool', 'install', '-g', 'dotnet-affected'];
-        const toolVersion = core.getInput('toolVersion') || version_1.DEFAULT_TOOL_VERSION;
         installArgs.push('--version', toolVersion);
         const exitCode = yield (0, exec_1.exec)('dotnet', installArgs, {
             ignoreReturnCode: true,
@@ -158,29 +165,40 @@ function installTool() {
     });
 }
 /**
- * The tool that ends up on the path is not necessarily the one this run asked for:
- * toolVersion is free form NuGet range syntax, and an install that finds the tool
- * already there exits non zero and is tolerated. Ask the tool itself.
+ * Checks that a tool this action can drive is on the path, before anything is asked
+ * of it.
+ *
+ * Two things can be wrong, and both are quiet until much later otherwise. The tool
+ * may not be runnable at all, which the invocation below reports as a misspelled
+ * dotnet command with no mention of the version that was asked for. Or it may be a
+ * newer major than this action was written against: toolVersion is free form NuGet
+ * range syntax, and an install that finds the tool already there is tolerated, so
+ * neither the input nor the install proves what ended up on the path. Ask the tool.
  */
-function assertInstalledToolIsSupported() {
+function assertToolIsUsable(toolVersion, installExitCode) {
     return __awaiter(this, void 0, void 0, function* () {
         let version = '';
-        // A version that cannot be read is not evidence of an unsupported one, and this
-        // check must not be what breaks a run that would otherwise have worked. Whatever
-        // stopped it reporting a version stops the invocation below too, with a better
-        // message than this could give.
+        let stderr = '';
         const exitCode = yield (0, exec_1.exec)('dotnet', ['affected', '--version'], {
             listeners: {
                 stdout: (data) => {
                     version += data.toString();
                 },
+                stderr: (data) => {
+                    stderr += data.toString();
+                },
             },
             silent: true,
             ignoreReturnCode: true,
         });
-        if (exitCode === 0) {
-            (0, version_1.assertSupportedToolVersion)(version);
+        if (exitCode !== 0) {
+            const details = stderr.trim() ? `\n${stderr.trim()}` : '';
+            throw new Error(`dotnet-affected is not runnable after installing it: 'dotnet affected --version' ` +
+                `exited ${exitCode}, and 'dotnet tool install' exited ${installExitCode} for ` +
+                `toolVersion '${toolVersion}'. Check that the version range matches something ` +
+                `published on the feed; the install's own output is above.${details}`);
         }
+        (0, version_1.assertSupportedToolVersion)(version);
     });
 }
 /**
@@ -221,8 +239,8 @@ function run() {
             for (const warning of warnings) {
                 core.warning(warning);
             }
-            yield installTool();
-            yield assertInstalledToolIsSupported();
+            const toolVersion = core.getInput('toolVersion') || version_1.DEFAULT_TOOL_VERSION;
+            yield assertToolIsUsable(toolVersion, yield installTool(toolVersion));
             core.info(`Running dotnet affected`);
             let affectedStdErr = '';
             const affectedExitCode = yield (0, exec_1.exec)('dotnet', args, {

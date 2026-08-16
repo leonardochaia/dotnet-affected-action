@@ -6,9 +6,16 @@ import { promises as fs } from 'fs'
 import { assertSupportedToolVersion, DEFAULT_TOOL_VERSION } from './version'
 import { ActionInputs, buildInvocation } from './args'
 
-async function installTool(): Promise<number> {
+/**
+ * Installs the tool, and returns what `dotnet tool install` exited with.
+ *
+ * An exit code of 1 is not treated as a failure here: it is what an install reports
+ * when the tool is already there, which is the normal state of a runner with a warm
+ * tool cache. It is also what a version range matching nothing on the feed reports,
+ * so the install alone cannot tell the two apart — {@link assertToolIsUsable} does.
+ */
+async function installTool(toolVersion: string): Promise<number> {
   const installArgs = ['tool', 'install', '-g', 'dotnet-affected']
-  const toolVersion = core.getInput('toolVersion') || DEFAULT_TOOL_VERSION
   installArgs.push('--version', toolVersion)
 
   const exitCode = await exec('dotnet', installArgs, {
@@ -25,30 +32,48 @@ async function installTool(): Promise<number> {
 }
 
 /**
- * The tool that ends up on the path is not necessarily the one this run asked for:
- * toolVersion is free form NuGet range syntax, and an install that finds the tool
- * already there exits non zero and is tolerated. Ask the tool itself.
+ * Checks that a tool this action can drive is on the path, before anything is asked
+ * of it.
+ *
+ * Two things can be wrong, and both are quiet until much later otherwise. The tool
+ * may not be runnable at all, which the invocation below reports as a misspelled
+ * dotnet command with no mention of the version that was asked for. Or it may be a
+ * newer major than this action was written against: toolVersion is free form NuGet
+ * range syntax, and an install that finds the tool already there is tolerated, so
+ * neither the input nor the install proves what ended up on the path. Ask the tool.
  */
-async function assertInstalledToolIsSupported(): Promise<void> {
+async function assertToolIsUsable(
+  toolVersion: string,
+  installExitCode: number,
+): Promise<void> {
   let version = ''
+  let stderr = ''
 
-  // A version that cannot be read is not evidence of an unsupported one, and this
-  // check must not be what breaks a run that would otherwise have worked. Whatever
-  // stopped it reporting a version stops the invocation below too, with a better
-  // message than this could give.
   const exitCode = await exec('dotnet', ['affected', '--version'], {
     listeners: {
       stdout: (data: Buffer) => {
         version += data.toString()
+      },
+      stderr: (data: Buffer) => {
+        stderr += data.toString()
       },
     },
     silent: true,
     ignoreReturnCode: true,
   })
 
-  if (exitCode === 0) {
-    assertSupportedToolVersion(version)
+  if (exitCode !== 0) {
+    const details = stderr.trim() ? `\n${stderr.trim()}` : ''
+
+    throw new Error(
+      `dotnet-affected is not runnable after installing it: 'dotnet affected --version' ` +
+        `exited ${exitCode}, and 'dotnet tool install' exited ${installExitCode} for ` +
+        `toolVersion '${toolVersion}'. Check that the version range matches something ` +
+        `published on the feed; the install's own output is above.${details}`,
+    )
   }
+
+  assertSupportedToolVersion(version)
 }
 
 /**
@@ -97,8 +122,8 @@ async function run(): Promise<void> {
       core.warning(warning)
     }
 
-    await installTool()
-    await assertInstalledToolIsSupported()
+    const toolVersion = core.getInput('toolVersion') || DEFAULT_TOOL_VERSION
+    await assertToolIsUsable(toolVersion, await installTool(toolVersion))
 
     core.info(`Running dotnet affected`)
 
