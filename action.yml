@@ -6,7 +6,8 @@ branding:
   color: 'green'
 inputs:
   toolVersion:
-    description: 'dotnet-affected version to install'
+    description: 'dotnet-affected version to install. Defaults to the latest 6.x, the major this action version targets.'
+    default: '6.*'
   from:
     description: 'Commit/branch/revision for git diff'
   to:

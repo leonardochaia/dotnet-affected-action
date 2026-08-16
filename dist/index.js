@@ -44,13 +44,12 @@ const os = __importStar(__nccwpck_require__(857));
 const path = __importStar(__nccwpck_require__(928));
 const exec_1 = __nccwpck_require__(236);
 const fs_1 = __nccwpck_require__(896);
+const version_1 = __nccwpck_require__(992);
 function installTool() {
     return __awaiter(this, void 0, void 0, function* () {
         const installArgs = ['tool', 'install', '-g', 'dotnet-affected'];
-        const toolVersion = core.getInput('toolVersion');
-        if (toolVersion) {
-            installArgs.push('--version', toolVersion);
-        }
+        const toolVersion = core.getInput('toolVersion') || version_1.DEFAULT_TOOL_VERSION;
+        installArgs.push('--version', toolVersion);
         const exitCode = yield (0, exec_1.exec)('dotnet', installArgs, {
             ignoreReturnCode: true,
         });
@@ -62,10 +61,37 @@ function installTool() {
         return exitCode;
     });
 }
+/**
+ * The tool that ends up on the path is not necessarily the one this run asked for:
+ * toolVersion is free form NuGet range syntax, and an install that finds the tool
+ * already there exits non zero and is tolerated. Ask the tool itself.
+ */
+function assertInstalledToolIsSupported() {
+    return __awaiter(this, void 0, void 0, function* () {
+        let version = '';
+        // A version that cannot be read is not evidence of an unsupported one, and this
+        // check must not be what breaks a run that would otherwise have worked. Whatever
+        // stopped it reporting a version stops the invocation below too, with a better
+        // message than this could give.
+        const exitCode = yield (0, exec_1.exec)('dotnet', ['affected', '--version'], {
+            listeners: {
+                stdout: (data) => {
+                    version += data.toString();
+                },
+            },
+            silent: true,
+            ignoreReturnCode: true,
+        });
+        if (exitCode === 0) {
+            (0, version_1.assertSupportedToolVersion)(version);
+        }
+    });
+}
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             yield installTool();
+            yield assertInstalledToolIsSupported();
             const args = ['affected'];
             const fromArg = core.getInput('from');
             const toArg = core.getInput('to');
@@ -129,6 +155,58 @@ function run() {
     });
 }
 run();
+
+
+/***/ }),
+
+/***/ 992:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.assertSupportedToolVersion = exports.parseMajorVersion = exports.DEFAULT_TOOL_VERSION = exports.SUPPORTED_TOOL_MAJOR = void 0;
+/**
+ * The dotnet-affected major this action version is written against. The arguments
+ * built below, and the exit codes read back, are the ones that major documents, so
+ * driving a different major is not something this action can claim to do. The action
+ * major tracks this number.
+ */
+exports.SUPPORTED_TOOL_MAJOR = 6;
+/**
+ * The default for the `toolVersion` input, kept in sync with action.yml. Without it
+ * `dotnet tool install` takes the newest version published, which is not necessarily
+ * the major this action targets.
+ */
+exports.DEFAULT_TOOL_VERSION = '6.*';
+/**
+ * Reads the major out of what `dotnet affected --version` printed, which looks like
+ * `6.2.1` or `6.2.1-preview.0.21+b5a80e4`. Returns undefined when the output is not a
+ * version, so callers can decide whether an unrecognised format is worth failing over.
+ */
+function parseMajorVersion(versionOutput) {
+    var _a, _b;
+    const version = (_a = versionOutput.trim().split(/\r?\n/).pop()) === null || _a === void 0 ? void 0 : _a.trim();
+    const major = (_b = version === null || version === void 0 ? void 0 : version.match(/^(\d+)\./)) === null || _b === void 0 ? void 0 : _b[1];
+    return major ? Number(major) : undefined;
+}
+exports.parseMajorVersion = parseMajorVersion;
+/**
+ * Throws when the installed tool is a newer major than this action targets.
+ *
+ * Older majors are left alone. Pinning one has always been allowed here and this does
+ * not take that away.
+ */
+function assertSupportedToolVersion(versionOutput) {
+    const major = parseMajorVersion(versionOutput);
+    if (major === undefined || major <= exports.SUPPORTED_TOOL_MAJOR) {
+        return;
+    }
+    throw new Error(`dotnet-affected ${versionOutput.trim()} is a newer major than dotnet-affected-action@v1 ` +
+        `targets, which is ${exports.SUPPORTED_TOOL_MAJOR}.x. Use leonardochaia/dotnet-affected-action@v${major}, ` +
+        `or set the toolVersion input to '${exports.DEFAULT_TOOL_VERSION}'.`);
+}
+exports.assertSupportedToolVersion = assertSupportedToolVersion;
 
 
 /***/ }),
