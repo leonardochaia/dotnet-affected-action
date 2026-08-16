@@ -8,6 +8,14 @@ dotnet-affected is a .NET tool for determining which projects are affected by a 
 
 Read more at <https://github.com/leonardochaia/dotnet-affected>
 
+> **`@v1` is deprecated and will not be updated.**
+>
+> The action major now tracks the dotnet-affected major it drives. Use `@v7` with dotnet-affected 7.x.
+>
+> `@v1` stays on dotnet-affected 6.x: it installs the latest 6.x by default and fails if a newer major is on the path, so it will not pick up a major it was not written against.
+>
+> Earlier point releases (`@v1.4` and below) have no such pin and will install dotnet-affected 7 once it is published. If you cannot move off one, set `toolVersion: '6.*'` on the step. That input has existed since `@v1.0.0`, so it works on every published version.
+
 ## Usage
 
 This action will run dotnet affected and output an `affected.proj` file that you can use to build/test/publish what has changed/affected since the last successful commit, or against your main branch, etc.

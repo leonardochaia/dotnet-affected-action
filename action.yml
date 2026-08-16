@@ -1,12 +1,13 @@
 name: 'Dotnet Affected'
-description: 'Runs dotnet-affected'
+description: 'DEPRECATED: use the action major matching your dotnet-affected major. Runs dotnet-affected.'
 author: 'Leonardo Chaia (me@leonardochaia.com)'
 branding:
   icon: 'layers'  
   color: 'green'
 inputs:
   toolVersion:
-    description: 'dotnet-affected version to install'
+    description: 'dotnet-affected version to install. Defaults to the latest 6.x, the major this action version targets.'
+    default: '6.*'
   from:
     description: 'Commit/branch/revision for git diff'
   to:
