@@ -29,4 +29,3 @@ jobs:
         id: dotnet_affected
         with:
           from: ${{ steps.set_shas.outputs.base }}
-          to: ${{ steps.set_shas.outputs.head }}

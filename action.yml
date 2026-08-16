@@ -2,22 +2,35 @@ name: 'Dotnet Affected'
 description: 'Runs dotnet-affected'
 author: 'Leonardo Chaia (me@leonardochaia.com)'
 branding:
-  icon: 'layers'  
+  icon: 'layers'
   color: 'green'
 inputs:
   toolVersion:
-    description: 'dotnet-affected version to install. Defaults to the latest 6.x, the major this action version targets.'
-    default: '6.*'
+    description: 'dotnet-affected version to install. Defaults to the latest 7.x, the major this action version targets.'
+    default: '7.*'
+  repository-path:
+    description: 'Path to the checkout to analyse, where the .git directory is. Defaults to the workspace. Output files are written here.'
   from:
-    description: 'Commit/branch/revision for git diff'
+    description: 'Commit/branch/revision to compare the working tree against. Defaults to the checked out commit.'
   to:
-    description: 'Commit/branch/revision for git diff'
-  exclude:
-    description: 'Valid .Net Regex pattern to ignore from build'
+    description: 'DEPRECATED and ignored. Every comparison ends at the commit Actions checked out, so this has nothing left to name. Use uncommitted instead.'
+  uncommitted:
+    description: 'What an unclean working tree contributes on top of the commits since "from": all, staged or none. Defaults to none when "from" is set, all otherwise.'
+  filter-file-path:
+    description: 'Path to a filter file (.sln, .slnx, .slnf) used to discover projects that may be affected.'
   solution-path:
-    description: 'Path to a Solution file (.sln) used to discover projects that may be affected.'
+    description: 'DEPRECATED, use filter-file-path. Path to a Solution file (.sln) used to discover projects that may be affected.'
+  exclude-output:
+    description: 'Valid .Net Regex pattern matched against project paths. Matching projects are still evaluated and still affect their dependents, they are only kept out of the output.'
+  exclude:
+    description: 'DEPRECATED, use exclude-output. Valid .Net Regex pattern to ignore from build.'
+  exclude-discovery:
+    description: 'Valid .Net Regex pattern matched against project paths. Matching projects are never loaded, so one that MSBuild cannot evaluate stops failing the run.'
+  no-gitignore:
+    description: 'Discover projects inside paths that git ignores, such as build output or nested clones. Defaults to false.'
+    default: 'false'
   output-format:
-    description: 'Space separated list of formats to use. (i.e text traversal)'
+    description: 'Space separated list of formats to use: text, traversal, json, slnf. (i.e text traversal)'
 outputs:
   affected:
     description: The list of changed and affected projects, if any

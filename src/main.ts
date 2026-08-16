@@ -4,6 +4,7 @@ import * as path from 'path'
 import { exec } from '@actions/exec'
 import { promises as fs } from 'fs'
 import { assertSupportedToolVersion, DEFAULT_TOOL_VERSION } from './version'
+import { ActionInputs, buildInvocation } from './args'
 
 async function installTool(): Promise<number> {
   const installArgs = ['tool', 'install', '-g', 'dotnet-affected']
@@ -50,49 +51,54 @@ async function assertInstalledToolIsSupported(): Promise<void> {
   }
 }
 
+/**
+ * `core.getBooleanInput` throws on an input that is not there, which for an optional
+ * one is just its absence. Only a value that is present and not a boolean is an error
+ * worth reporting.
+ */
+function getOptionalBooleanInput(name: string): boolean {
+  return core.getInput(name) ? core.getBooleanInput(name) : false
+}
+
+function readInputs(): ActionInputs {
+  // The repository this job checked out, and where the output is read back from.
+  const repositoryPath =
+    core.getInput('repository-path') || process.env.GITHUB_WORKSPACE
+
+  if (!repositoryPath) {
+    throw new Error(
+      'No GITHUB_WORKSPACE env? Set the repository-path input to the checkout to analyse.',
+    )
+  }
+
+  return {
+    repositoryPath,
+    from: core.getInput('from'),
+    to: core.getInput('to'),
+    uncommitted: core.getInput('uncommitted'),
+    filterFilePath: core.getInput('filter-file-path'),
+    solutionPath: core.getInput('solution-path'),
+    excludeOutput: core.getInput('exclude-output'),
+    exclude: core.getInput('exclude'),
+    excludeDiscovery: core.getInput('exclude-discovery'),
+    noGitIgnore: getOptionalBooleanInput('no-gitignore'),
+    outputFormat: core.getInput('output-format'),
+  }
+}
+
 async function run(): Promise<void> {
   try {
+    const inputs = readInputs()
+    const { args, warnings, readTextAsOutput } = buildInvocation(inputs)
+
+    // Before installing anything: a workflow that is about to be told its inputs are
+    // going away should hear it even if the run then fails for another reason.
+    for (const warning of warnings) {
+      core.warning(warning)
+    }
+
     await installTool()
     await assertInstalledToolIsSupported()
-
-    const args = ['affected']
-
-    const fromArg = core.getInput('from')
-    const toArg = core.getInput('to')
-    const solutionPathArg = core.getInput('solution-path')
-    const excludeArg = core.getInput('exclude')
-    const outputFormatArg = core.getInput('output-format')
-    let readTextAsOutput = false
-
-    if (outputFormatArg) {
-      args.push('--format', outputFormatArg)
-      readTextAsOutput = outputFormatArg.includes('text')
-    } else {
-      args.push('--format', 'text', 'traversal')
-      readTextAsOutput = true
-    }
-
-    if (fromArg) {
-      args.push('--from', fromArg)
-    }
-
-    if (toArg) {
-      args.push('--to', toArg)
-    }
-
-    const affectedTxtPath = process.env.GITHUB_WORKSPACE
-    if (!affectedTxtPath) {
-      throw new Error('No GITHUB_WORKSPACE env?')
-    }
-
-    if (solutionPathArg) {
-      args.push('--solution-path', solutionPathArg)
-      args.push('--repository-path', affectedTxtPath)
-    }
-
-    if (excludeArg) {
-      args.push('--exclude', excludeArg)
-    }
 
     core.info(`Running dotnet affected`)
 
@@ -118,7 +124,7 @@ async function run(): Promise<void> {
 
     if (readTextAsOutput) {
       const affectedTxt = await fs.readFile(
-        path.join(affectedTxtPath, 'affected.txt'),
+        path.join(inputs.repositoryPath, 'affected.txt'),
         'utf-8',
       )
       core.setOutput('affected', affectedTxt)
