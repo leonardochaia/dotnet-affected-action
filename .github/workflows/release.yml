@@ -1,0 +1,69 @@
+name: Release
+
+# Publishing a release is the whole trigger: you create it with the version tag, this
+# checks that the tag is safe to serve and then moves the major tag to it.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Must match the version check-dist.yml builds with. The committed dist/ is
+      # whatever that produced, and a different major here can rewrite the bundle for
+      # reasons that have nothing to do with the source.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+
+      - run: npm ci
+
+      - run: |
+          npm run build
+          npm run package
+
+      # dist/index.js is what a workflow using this action actually runs, so a tag whose
+      # dist/ does not match its source serves code the repository does not show. That is
+      # checked on pull requests, but a tag can be cut from any commit, and the moment it
+      # is wrong is the moment it is hardest to notice.
+      - name: dist/ must match the source at this tag
+        run: |
+          if [ -n "$(git status --porcelain dist/)" ]; then
+            git diff --stat dist/
+            echo "::error::dist/ is stale at ${{ github.ref_name }}. Rebuild it and retag before releasing."
+            exit 1
+          fi
+
+      # Skipped for prereleases: @v7 is what people who want a working action are pinned
+      # to, and a preview is not what they asked for. Prereleases are used by their full
+      # tag, which the release itself already provides.
+      #
+      # Asked twice, because the two catch different mistakes. The checkbox is the intent
+      # and can be forgotten; a version part after a hyphen is a prerelease by definition
+      # and cannot be. Either one is enough to leave the major tag alone.
+      - name: Move the major tag
+        if: ${{ !github.event.release.prerelease }}
+        run: |
+          major="${GITHUB_REF_NAME%%.*}"
+
+          if [ "$major" = "$GITHUB_REF_NAME" ]; then
+            echo "::error::${GITHUB_REF_NAME} has no version part to take a major from."
+            exit 1
+          fi
+
+          case "$GITHUB_REF_NAME" in
+            *-*)
+              echo "${GITHUB_REF_NAME} is a prerelease version. Leaving $major where it is."
+              exit 0
+              ;;
+          esac
+
+          echo "Pointing $major at ${GITHUB_REF_NAME} ($GITHUB_SHA)"
+          git tag -f "$major" "$GITHUB_SHA"
+          git push -f origin "refs/tags/$major"
