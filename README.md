@@ -120,7 +120,7 @@ Every input is optional. With none of them set, the action compares the checked-
 | `exclude-output`    | `--exclude-output`              | .NET regex. Matching projects are still evaluated and still affect their dependents, they are only kept out of the output |
 | `exclude-discovery` | `--exclude-discovery`           | .NET regex. Matching projects are never loaded, so one MSBuild cannot evaluate stops failing the run  |
 | `no-gitignore`      | `--no-gitignore`                | Discover projects under paths git ignores, such as build output or nested clones. Defaults to `false` |
-| `output-format`     | `--format`                      | Space-separated formats: `text`, `traversal`, `json`, `slnf`. Defaults to `text traversal`             |
+| `output-format`     | `--format`                      | Space- or comma-separated formats: `text`, `traversal`, `json`, `slnf`. Defaults to `text traversal`   |
 | `to`                | —                               | **Deprecated and ignored.** See [below](#the-to-input)                                                |
 | `solution-path`     | `--filter-file-path`            | **Deprecated**, use `filter-file-path`                                                               |
 | `exclude`           | `--exclude-output`              | **Deprecated**, use `exclude-output`                                                                 |
@@ -131,7 +131,7 @@ Every input is optional. With none of them set, the action compares the checked-
 | ---------- | ----------------------------------------------------------------------------------- |
 | `affected` | Contents of `affected.txt`, one project path per line. Empty when nothing changed     |
 
-The output is read from `affected.txt`, so it is only set when the format list contains `text`. Asking for `output-format: traversal` alone leaves `affected` empty on every run, which reads exactly like "nothing was affected" — and the step conditions built on it skip everything.
+The output is read from `affected.txt`, so it is only set when the format list contains `text`. Asking for `output-format: traversal` alone leaves `affected` empty on every run, which reads exactly like "nothing was affected" — and the step conditions built on it skip everything. The action warns when the formats you asked for would do that.
 
 When nothing is affected the tool exits `166`, which the action reports as success with an empty `affected` output. Neither output file is written in that case, which is what the `!= ''` guards on the later steps are for. Any other non-zero exit fails the step with the tool's stderr in the log.
 

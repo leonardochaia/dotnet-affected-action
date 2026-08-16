@@ -39,11 +39,27 @@ export function buildInvocation(inputs: ActionInputs): AffectedInvocation {
   const args = ['affected']
   const warnings: string[] = []
 
+  // Documented as space separated, but a list is a list: commas are what people reach
+  // for, and a whole list arriving as one unsplit token reaches the tool as a format
+  // name nothing matches.
   const formats = inputs.outputFormat
-    ? inputs.outputFormat.split(/\s+/).filter(format => format)
+    ? inputs.outputFormat.split(/[\s,]+/).filter(format => format)
     : DEFAULT_OUTPUT_FORMATS
 
   args.push('--format', ...formats)
+
+  // The affected output is read from affected.txt, which only the text format writes.
+  // Without it the output is empty on every run, which reads exactly like nothing being
+  // affected: the `outputs.affected != ''` conditions this action exists to drive would
+  // skip every step, on a run that succeeded and found plenty.
+  if (!formats.includes('text')) {
+    warnings.push(
+      `The output-format input does not include 'text', so the affected output will be ` +
+        `empty on every run: it is read from affected.txt, which only that format writes. ` +
+        `Steps conditioned on it will be skipped even when projects were affected. Add ` +
+        `'text' to output-format, or condition those steps on something else.`,
+    )
+  }
 
   // Always passed, so the output lands where this action reads it back from. Left to
   // itself the tool writes next to the filter file, which for a solution in a

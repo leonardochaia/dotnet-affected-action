@@ -55,10 +55,10 @@ describe('the invocation', () => {
   })
 
   test('passes the requested formats instead', () => {
-    const { args } = build({ outputFormat: 'traversal slnf' })
+    const { args } = build({ outputFormat: 'text slnf' })
 
     expect(args.slice(args.indexOf('--format') + 1)).toEqual([
-      'traversal',
+      'text',
       'slnf',
       '--repository-path',
       '/workspace',
@@ -67,11 +67,41 @@ describe('the invocation', () => {
     ])
   })
 
+  // A list arriving as one unsplit token reaches the tool as a format name nothing
+  // matches, which is what leonardochaia/dotnet-affected-action#322 reported.
+  test('splits a format list however it was written', () => {
+    for (const outputFormat of [
+      'text traversal',
+      'text,traversal',
+      'text, traversal',
+      '  text   traversal  ',
+    ]) {
+      const { args } = build({ outputFormat })
+
+      expect(
+        args.slice(args.indexOf('--format') + 1, args.indexOf('--format') + 3),
+      ).toEqual(['text', 'traversal'])
+    }
+  })
+
   // The output is read from affected.txt, which only the text format writes. Reading it
   // anyway would fail the run over a file the workflow never asked for.
   test('knows the affected output is unavailable without the text format', () => {
     expect(build({ outputFormat: 'traversal' }).readTextAsOutput).toBe(false)
     expect(build({ outputFormat: 'text json' }).readTextAsOutput).toBe(true)
+  })
+
+  // An empty affected output reads exactly like nothing being affected, so the steps
+  // conditioned on it skip silently on a run that found plenty.
+  test('warns when the formats leave the affected output empty', () => {
+    expect(build({ outputFormat: 'traversal' }).warnings).toEqual([
+      expect.stringContaining('affected output will be empty'),
+    ])
+  })
+
+  test('does not warn when text is among the formats', () => {
+    expect(build({ outputFormat: 'json text' }).warnings).toEqual([])
+    expect(build().warnings).toEqual([])
   })
 
   test('passes from as the baseline', () => {

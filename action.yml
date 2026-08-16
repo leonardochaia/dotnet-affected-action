@@ -30,7 +30,7 @@ inputs:
     description: 'Discover projects inside paths that git ignores, such as build output or nested clones. Defaults to false.'
     default: 'false'
   output-format:
-    description: 'Space separated list of formats to use: text, traversal, json, slnf. (i.e text traversal)'
+    description: 'Space or comma separated list of formats to use: text, traversal, json, slnf. (i.e text traversal). The affected output needs text.'
 outputs:
   affected:
     description: The list of changed and affected projects, if any
