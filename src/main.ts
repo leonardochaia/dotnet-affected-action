@@ -3,13 +3,12 @@ import * as os from 'os'
 import * as path from 'path'
 import { exec } from '@actions/exec'
 import { promises as fs } from 'fs'
+import { assertSupportedToolVersion, DEFAULT_TOOL_VERSION } from './version'
 
 async function installTool(): Promise<number> {
   const installArgs = ['tool', 'install', '-g', 'dotnet-affected']
-  const toolVersion = core.getInput('toolVersion')
-  if (toolVersion) {
-    installArgs.push('--version', toolVersion)
-  }
+  const toolVersion = core.getInput('toolVersion') || DEFAULT_TOOL_VERSION
+  installArgs.push('--version', toolVersion)
 
   const exitCode = await exec('dotnet', installArgs, {
     ignoreReturnCode: true,
@@ -24,9 +23,37 @@ async function installTool(): Promise<number> {
   return exitCode
 }
 
+/**
+ * The tool that ends up on the path is not necessarily the one this run asked for:
+ * toolVersion is free form NuGet range syntax, and an install that finds the tool
+ * already there exits non zero and is tolerated. Ask the tool itself.
+ */
+async function assertInstalledToolIsSupported(): Promise<void> {
+  let version = ''
+
+  // A version that cannot be read is not evidence of an unsupported one, and this
+  // check must not be what breaks a run that would otherwise have worked. Whatever
+  // stopped it reporting a version stops the invocation below too, with a better
+  // message than this could give.
+  const exitCode = await exec('dotnet', ['affected', '--version'], {
+    listeners: {
+      stdout: (data: Buffer) => {
+        version += data.toString()
+      },
+    },
+    silent: true,
+    ignoreReturnCode: true,
+  })
+
+  if (exitCode === 0) {
+    assertSupportedToolVersion(version)
+  }
+}
+
 async function run(): Promise<void> {
   try {
     await installTool()
+    await assertInstalledToolIsSupported()
 
     const args = ['affected']
 
