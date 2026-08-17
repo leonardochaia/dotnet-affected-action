@@ -43,17 +43,17 @@ describe('assertSupportedToolVersion', () => {
   })
 
   test('accepts earlier majors', () => {
-    expect(() => assertSupportedToolVersion('5.0.3')).not.toThrow()
+    expect(() => assertSupportedToolVersion('6.2.0')).not.toThrow()
   })
 
   test('refuses a newer major and names the action to move to', () => {
-    expect(() => assertSupportedToolVersion('7.0.0')).toThrow(
-      /dotnet-affected-action@v7/,
+    expect(() => assertSupportedToolVersion('8.0.0')).toThrow(
+      /dotnet-affected-action@v8/,
     )
   })
 
   test('refuses every major beyond the supported one', () => {
-    expect(() => assertSupportedToolVersion('8.1.0')).toThrow()
+    expect(() => assertSupportedToolVersion('9.1.0')).toThrow()
   })
 
   // An output format we cannot read is not evidence of an unsupported version, and

@@ -1,6 +1,114 @@
 require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
+/***/ 183:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+/**
+ * Translates the action's inputs into a `dotnet affected` invocation.
+ *
+ * Kept apart from the step that runs it so the mapping can be tested on its own:
+ * it is the whole contract between this action and the tool's major.
+ */
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.buildInvocation = exports.DEFAULT_OUTPUT_FORMATS = void 0;
+/** What the action asks for when `output-format` is not set. */
+exports.DEFAULT_OUTPUT_FORMATS = ['text', 'traversal'];
+function buildInvocation(inputs) {
+    const args = ['affected'];
+    const warnings = [];
+    // Documented as space separated, but a list is a list: commas are what people reach
+    // for, and a whole list arriving as one unsplit token reaches the tool as a format
+    // name nothing matches.
+    const formats = inputs.outputFormat
+        ? inputs.outputFormat.split(/[\s,]+/).filter(format => format)
+        : exports.DEFAULT_OUTPUT_FORMATS;
+    args.push('--format', ...formats);
+    // The affected output is read from affected.txt, which only the text format writes.
+    // Without it the output is empty on every run, which reads exactly like nothing being
+    // affected: the `outputs.affected != ''` conditions this action exists to drive would
+    // skip every step, on a run that succeeded and found plenty.
+    if (!formats.includes('text')) {
+        warnings.push(`The output-format input does not include 'text', so the affected output will be ` +
+            `empty on every run: it is read from affected.txt, which only that format writes. ` +
+            `Steps conditioned on it will be skipped even when projects were affected. Add ` +
+            `'text' to output-format, or condition those steps on something else.`);
+    }
+    // Always passed, so the output lands where this action reads it back from. Left to
+    // itself the tool writes next to the filter file, which for a solution in a
+    // subdirectory is not the workspace.
+    args.push('--repository-path', inputs.repositoryPath);
+    if (inputs.from) {
+        args.push('--from', inputs.from);
+    }
+    // The tool takes --to only when it names the commit that is checked out, which makes
+    // it a no-op, and warns even then. Actions checks out the commit being built, so the
+    // input has nothing left to express. Passing it on would turn a stale workflow input
+    // into a failed run for no gain.
+    if (inputs.to) {
+        warnings.push('The `to` input is deprecated and is being ignored. dotnet-affected 7 ends every ' +
+            'comparison at the working tree, which Actions has already checked out at the ' +
+            'commit being built. Remove the input, and use `uncommitted` to choose what an ' +
+            'unclean working tree contributes.');
+    }
+    args.push('--uncommitted', inputs.uncommitted || defaultUncommitted(inputs));
+    const filterFilePath = inputs.filterFilePath || inputs.solutionPath;
+    if (inputs.solutionPath) {
+        warnings.push(inputs.filterFilePath
+            ? 'Both `filter-file-path` and `solution-path` are set. `filter-file-path` wins; ' +
+                'remove `solution-path`, which is deprecated.'
+            : 'The `solution-path` input is deprecated, use `filter-file-path`. It takes the ' +
+                'same solution files and also accepts .slnx and .slnf.');
+    }
+    if (filterFilePath) {
+        args.push('--filter-file-path', filterFilePath);
+    }
+    const excludeOutput = inputs.excludeOutput || inputs.exclude;
+    if (inputs.exclude) {
+        warnings.push(inputs.excludeOutput
+            ? 'Both `exclude-output` and `exclude` are set. `exclude-output` wins; remove ' +
+                '`exclude`, which is deprecated.'
+            : 'The `exclude` input is deprecated, use `exclude-output`. It does the same thing: ' +
+                'matching projects are still evaluated and still carry changes to the projects ' +
+                'depending on them, they are only kept out of the output.');
+    }
+    if (excludeOutput) {
+        args.push('--exclude-output', excludeOutput);
+    }
+    if (inputs.excludeDiscovery) {
+        args.push('--exclude-discovery', inputs.excludeDiscovery);
+    }
+    if (inputs.noGitIgnore) {
+        args.push('--no-gitignore');
+    }
+    return {
+        args,
+        warnings,
+        readTextAsOutput: formats.includes('text'),
+    };
+}
+exports.buildInvocation = buildInvocation;
+/**
+ * What the working tree contributes when the workflow did not say.
+ *
+ * The tool defaults to `all`, which is right for a developer running it on a checkout
+ * they are editing. A job is not that: steps before this one restore, generate and
+ * stamp files, and every one of those writes would count as a change. So with a
+ * baseline to compare against, the default here is the commits alone.
+ *
+ * Without a baseline there is nothing else to compare: `--from` defaults to the
+ * checked-out commit, so ignoring the working tree too would leave the two ends of the
+ * comparison identical and report nothing affected on every run.
+ */
+function defaultUncommitted(inputs) {
+    return inputs.from ? 'none' : 'all';
+}
+
+
+/***/ }),
+
 /***/ 915:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -45,10 +153,18 @@ const path = __importStar(__nccwpck_require__(928));
 const exec_1 = __nccwpck_require__(236);
 const fs_1 = __nccwpck_require__(896);
 const version_1 = __nccwpck_require__(992);
-function installTool() {
+const args_1 = __nccwpck_require__(183);
+/**
+ * Installs the tool, and returns what `dotnet tool install` exited with.
+ *
+ * An exit code of 1 is not treated as a failure here: it is what an install reports
+ * when the tool is already there, which is the normal state of a runner with a warm
+ * tool cache. It is also what a version range matching nothing on the feed reports,
+ * so the install alone cannot tell the two apart — {@link assertToolIsUsable} does.
+ */
+function installTool(toolVersion) {
     return __awaiter(this, void 0, void 0, function* () {
         const installArgs = ['tool', 'install', '-g', 'dotnet-affected'];
-        const toolVersion = core.getInput('toolVersion') || version_1.DEFAULT_TOOL_VERSION;
         installArgs.push('--version', toolVersion);
         const exitCode = yield (0, exec_1.exec)('dotnet', installArgs, {
             ignoreReturnCode: true,
@@ -62,68 +178,82 @@ function installTool() {
     });
 }
 /**
- * The tool that ends up on the path is not necessarily the one this run asked for:
- * toolVersion is free form NuGet range syntax, and an install that finds the tool
- * already there exits non zero and is tolerated. Ask the tool itself.
+ * Checks that a tool this action can drive is on the path, before anything is asked
+ * of it.
+ *
+ * Two things can be wrong, and both are quiet until much later otherwise. The tool
+ * may not be runnable at all, which the invocation below reports as a misspelled
+ * dotnet command with no mention of the version that was asked for. Or it may be a
+ * newer major than this action was written against: toolVersion is free form NuGet
+ * range syntax, and an install that finds the tool already there is tolerated, so
+ * neither the input nor the install proves what ended up on the path. Ask the tool.
  */
-function assertInstalledToolIsSupported() {
+function assertToolIsUsable(toolVersion, installExitCode) {
     return __awaiter(this, void 0, void 0, function* () {
         let version = '';
-        // A version that cannot be read is not evidence of an unsupported one, and this
-        // check must not be what breaks a run that would otherwise have worked. Whatever
-        // stopped it reporting a version stops the invocation below too, with a better
-        // message than this could give.
+        let stderr = '';
         const exitCode = yield (0, exec_1.exec)('dotnet', ['affected', '--version'], {
             listeners: {
                 stdout: (data) => {
                     version += data.toString();
                 },
+                stderr: (data) => {
+                    stderr += data.toString();
+                },
             },
             silent: true,
             ignoreReturnCode: true,
         });
-        if (exitCode === 0) {
-            (0, version_1.assertSupportedToolVersion)(version);
+        if (exitCode !== 0) {
+            const details = stderr.trim() ? `\n${stderr.trim()}` : '';
+            throw new Error(`dotnet-affected is not runnable after installing it: 'dotnet affected --version' ` +
+                `exited ${exitCode}, and 'dotnet tool install' exited ${installExitCode} for ` +
+                `toolVersion '${toolVersion}'. Check that the version range matches something ` +
+                `published on the feed; the install's own output is above.${details}`);
         }
+        (0, version_1.assertSupportedToolVersion)(version);
     });
+}
+/**
+ * `core.getBooleanInput` throws on an input that is not there, which for an optional
+ * one is just its absence. Only a value that is present and not a boolean is an error
+ * worth reporting.
+ */
+function getOptionalBooleanInput(name) {
+    return core.getInput(name) ? core.getBooleanInput(name) : false;
+}
+function readInputs() {
+    // The repository this job checked out, and where the output is read back from.
+    const repositoryPath = core.getInput('repository-path') || process.env.GITHUB_WORKSPACE;
+    if (!repositoryPath) {
+        throw new Error('No GITHUB_WORKSPACE env? Set the repository-path input to the checkout to analyse.');
+    }
+    return {
+        repositoryPath,
+        from: core.getInput('from'),
+        to: core.getInput('to'),
+        uncommitted: core.getInput('uncommitted'),
+        filterFilePath: core.getInput('filter-file-path'),
+        solutionPath: core.getInput('solution-path'),
+        excludeOutput: core.getInput('exclude-output'),
+        exclude: core.getInput('exclude'),
+        excludeDiscovery: core.getInput('exclude-discovery'),
+        noGitIgnore: getOptionalBooleanInput('no-gitignore'),
+        outputFormat: core.getInput('output-format'),
+    };
 }
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            yield installTool();
-            yield assertInstalledToolIsSupported();
-            const args = ['affected'];
-            const fromArg = core.getInput('from');
-            const toArg = core.getInput('to');
-            const solutionPathArg = core.getInput('solution-path');
-            const excludeArg = core.getInput('exclude');
-            const outputFormatArg = core.getInput('output-format');
-            let readTextAsOutput = false;
-            if (outputFormatArg) {
-                args.push('--format', outputFormatArg);
-                readTextAsOutput = outputFormatArg.includes('text');
+            const inputs = readInputs();
+            const { args, warnings, readTextAsOutput } = (0, args_1.buildInvocation)(inputs);
+            // Before installing anything: a workflow that is about to be told its inputs are
+            // going away should hear it even if the run then fails for another reason.
+            for (const warning of warnings) {
+                core.warning(warning);
             }
-            else {
-                args.push('--format', 'text', 'traversal');
-                readTextAsOutput = true;
-            }
-            if (fromArg) {
-                args.push('--from', fromArg);
-            }
-            if (toArg) {
-                args.push('--to', toArg);
-            }
-            const affectedTxtPath = process.env.GITHUB_WORKSPACE;
-            if (!affectedTxtPath) {
-                throw new Error('No GITHUB_WORKSPACE env?');
-            }
-            if (solutionPathArg) {
-                args.push('--solution-path', solutionPathArg);
-                args.push('--repository-path', affectedTxtPath);
-            }
-            if (excludeArg) {
-                args.push('--exclude', excludeArg);
-            }
+            const toolVersion = core.getInput('toolVersion') || version_1.DEFAULT_TOOL_VERSION;
+            yield assertToolIsUsable(toolVersion, yield installTool(toolVersion));
             core.info(`Running dotnet affected`);
             let affectedStdErr = '';
             const affectedExitCode = yield (0, exec_1.exec)('dotnet', args, {
@@ -145,7 +275,7 @@ function run() {
                 return;
             }
             if (readTextAsOutput) {
-                const affectedTxt = yield fs_1.promises.readFile(path.join(affectedTxtPath, 'affected.txt'), 'utf-8');
+                const affectedTxt = yield fs_1.promises.readFile(path.join(inputs.repositoryPath, 'affected.txt'), 'utf-8');
                 core.setOutput('affected', affectedTxt);
             }
         }
@@ -172,13 +302,13 @@ exports.assertSupportedToolVersion = exports.parseMajorVersion = exports.DEFAULT
  * driving a different major is not something this action can claim to do. The action
  * major tracks this number.
  */
-exports.SUPPORTED_TOOL_MAJOR = 6;
+exports.SUPPORTED_TOOL_MAJOR = 7;
 /**
  * The default for the `toolVersion` input, kept in sync with action.yml. Without it
  * `dotnet tool install` takes the newest version published, which is not necessarily
  * the major this action targets.
  */
-exports.DEFAULT_TOOL_VERSION = '6.*';
+exports.DEFAULT_TOOL_VERSION = '7.*';
 /**
  * Reads the major out of what `dotnet affected --version` printed, which looks like
  * `6.2.1` or `6.2.1-preview.0.21+b5a80e4`. Returns undefined when the output is not a
@@ -202,8 +332,9 @@ function assertSupportedToolVersion(versionOutput) {
     if (major === undefined || major <= exports.SUPPORTED_TOOL_MAJOR) {
         return;
     }
-    throw new Error(`dotnet-affected ${versionOutput.trim()} is a newer major than dotnet-affected-action@v1 ` +
-        `targets, which is ${exports.SUPPORTED_TOOL_MAJOR}.x. Use leonardochaia/dotnet-affected-action@v${major}, ` +
+    throw new Error(`dotnet-affected ${versionOutput.trim()} is a newer major than ` +
+        `dotnet-affected-action@v${exports.SUPPORTED_TOOL_MAJOR} targets, which is ` +
+        `${exports.SUPPORTED_TOOL_MAJOR}.x. Use leonardochaia/dotnet-affected-action@v${major}, ` +
         `or set the toolVersion input to '${exports.DEFAULT_TOOL_VERSION}'.`);
 }
 exports.assertSupportedToolVersion = assertSupportedToolVersion;

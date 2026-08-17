@@ -29,4 +29,7 @@ jobs:
         id: dotnet_affected
         with:
           from: ${{ steps.set_shas.outputs.base }}
-          to: ${{ steps.set_shas.outputs.head }}
+          # Only 7.0.0-preview.1 is published, and a NuGet floating range skips
+          # prereleases, so the 7.* the action defaults to matches nothing yet.
+          # Drop this once 7.0.0 is on NuGet.
+          toolVersion: '7.*-*'

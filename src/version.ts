@@ -4,14 +4,14 @@
  * driving a different major is not something this action can claim to do. The action
  * major tracks this number.
  */
-export const SUPPORTED_TOOL_MAJOR = 6
+export const SUPPORTED_TOOL_MAJOR = 7
 
 /**
  * The default for the `toolVersion` input, kept in sync with action.yml. Without it
  * `dotnet tool install` takes the newest version published, which is not necessarily
  * the major this action targets.
  */
-export const DEFAULT_TOOL_VERSION = '6.*'
+export const DEFAULT_TOOL_VERSION = '7.*'
 
 /**
  * Reads the major out of what `dotnet affected --version` printed, which looks like
@@ -39,8 +39,9 @@ export function assertSupportedToolVersion(versionOutput: string): void {
   }
 
   throw new Error(
-    `dotnet-affected ${versionOutput.trim()} is a newer major than dotnet-affected-action@v1 ` +
-      `targets, which is ${SUPPORTED_TOOL_MAJOR}.x. Use leonardochaia/dotnet-affected-action@v${major}, ` +
+    `dotnet-affected ${versionOutput.trim()} is a newer major than ` +
+      `dotnet-affected-action@v${SUPPORTED_TOOL_MAJOR} targets, which is ` +
+      `${SUPPORTED_TOOL_MAJOR}.x. Use leonardochaia/dotnet-affected-action@v${major}, ` +
       `or set the toolVersion input to '${DEFAULT_TOOL_VERSION}'.`,
   )
 }
